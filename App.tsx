@@ -3,21 +3,20 @@ import Header from './components/Header';
 import Hero from './components/Hero';
 import Features from './components/Features';
 import Demo from './components/Demo';
+import Pricing from './components/Pricing';
+import About from './components/About';
+import Contact from './components/Contact';
 import Footer from './components/Footer';
 import TextEditorModal from './components/TextEditorModal';
 
-// Extend the Window interface to include the custom 'claude' object
-declare global {
-  interface Window {
-    claude: {
-      complete: (prompt: string) => Promise<string>;
-    };
-  }
-}
-
 const App: React.FC = () => {
-  const [isDarkMode, setIsDarkMode] = useState(false);
-  const [isEditorModalOpen, setIsEditorModalOpen] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => 
+    window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+  );
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const openModal = () => setIsModalOpen(true);
+  const closeModal = () => setIsModalOpen(false);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -26,65 +25,34 @@ const App: React.FC = () => {
       document.documentElement.classList.remove('dark');
     }
   }, [isDarkMode]);
-  
-  // Mock the external 'claude' API for the TextEditor component to function
+
   useEffect(() => {
-    window.claude = {
-      complete: (prompt: string): Promise<string> => {
-        console.log("Mock 'claude.complete' called with prompt:", prompt);
-        return new Promise(resolve => {
-          setTimeout(() => {
-            const mockSuggestions = [
-              {
-                "category": "style",
-                "issue": "make sure that",
-                "suggestion": "ensure",
-                "explanation": "This is a more concise and professional alternative.",
-                "position": 58
-              },
-              {
-                "category": "grammar",
-                "issue": "beneficial to humanity",
-                "suggestion": "beneficial for humanity",
-                "explanation": "'Beneficial for' is often preferred when discussing benefits to a group.",
-                "position": 85
-              },
-              {
-                "category": "clarity",
-                "issue": "very many more characteristics",
-                "suggestion": "many other characteristics",
-                "explanation": "'Very many' is redundant. 'Many' is sufficient and more direct.",
-                "position": 401
-              },
-               {
-                "category": "spelling",
-                "issue": "probelm-solve",
-                "suggestion": "problem-solve",
-                "explanation": "Corrected spelling of 'problem'.",
-                "position": 380
-              }
-            ];
-            resolve(JSON.stringify(mockSuggestions));
-          }, 1500); // Simulate network delay
-        });
-      }
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    
+    const handleChange = (e: MediaQueryListEvent) => {
+      setIsDarkMode(e.matches);
+    };
+
+    mediaQuery.addEventListener('change', handleChange);
+
+    return () => {
+      mediaQuery.removeEventListener('change', handleChange);
     };
   }, []);
 
-  const openEditorModal = () => setIsEditorModalOpen(true);
-  const closeEditorModal = () => setIsEditorModalOpen(false);
-
-
   return (
     <div className="bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 transition-colors duration-300">
-      <Header isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} onGetStartedClick={openEditorModal} />
+      <Header isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} onLaunchEditor={openModal} />
       <main>
-        <Hero onTryDemoClick={openEditorModal} />
+        <Hero onTryDemoClick={openModal} />
         <Features />
-        <Demo onTryDemoClick={openEditorModal} />
+        <Demo onTryDemoClick={openModal} />
+        <Pricing />
+        <About />
+        <Contact />
       </main>
       <Footer />
-      {isEditorModalOpen && <TextEditorModal isOpen={isEditorModalOpen} onClose={closeEditorModal} />}
+      <TextEditorModal isOpen={isModalOpen} onClose={closeModal} />
     </div>
   );
 };

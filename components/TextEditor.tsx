@@ -1,3 +1,11 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { GoogleGenAI, Type } from '@google/genai';
+import { 
+  Sparkles, Check, X, Loader2, Sun, Moon, Copy, FileText,
+  Bold, Italic, Underline, Link, AlignLeft, AlignCenter, 
+  AlignRight, List, ListOrdered, IndentDecrease, IndentIncrease,
+  Palette, MoveVertical, KeyRound
+} from './icons';
 
 const TRANSLATIONS = {
   "en-US": {
@@ -44,7 +52,14 @@ const TRANSLATIONS = {
     "failedToAnalyze": "Failed to analyze text. Please try again.",
     "failedToParse": "Failed to parse suggestions. Please try again.",
     "reject": "Reject",
-    "accept": "Accept"
+    "accept": "Accept",
+    "freeUsesLeft": "free analyses remaining",
+    "outOfFreeUses": "You are out of free uses.",
+    "enterApiKey": "Please enter your API key to continue.",
+    "apiKey": "API Key",
+    "saveKey": "Save Key",
+    "keySaved": "API Key saved successfully!",
+    "apiKeyRequired": "You are out of free trials. Please set an API key to continue."
   },
   "es-ES": {
     "appTitle": "Asistente de Escritura IntelliWrite",
@@ -90,7 +105,14 @@ const TRANSLATIONS = {
     "failedToAnalyze": "Error al analizar el texto. Por favor intenta de nuevo.",
     "failedToParse": "Error al procesar las sugerencias. Por favor intenta de nuevo.",
     "reject": "Rechazar",
-    "accept": "Aceptar"
+    "accept": "Aceptar",
+    "freeUsesLeft": "análisis gratuitos restantes",
+    "outOfFreeUses": "Se te acabaron los usos gratuitos.",
+    "enterApiKey": "Por favor, introduce tu clave de API para continuar.",
+    "apiKey": "Clave de API",
+    "saveKey": "Guardar Clave",
+    "keySaved": "¡Clave de API guardada correctamente!",
+    "apiKeyRequired": "Se te acabaron los usos gratuitos. Por favor, introduce una clave de API para continuar."
   }
 };
 
@@ -104,20 +126,12 @@ const findMatchingLocale = (locale: string) => {
 const locale = findMatchingLocale(browserLocale);
 const t = (key: keyof typeof TRANSLATIONS['en-US']) => TRANSLATIONS[locale as keyof typeof TRANSLATIONS]?.[key] || TRANSLATIONS['en-US'][key] || key;
 
-import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Sparkles, Check, X, Loader2, Sun, Moon, Copy, FileText,
-  Bold, Italic, Underline, Link, AlignLeft, AlignCenter, 
-  AlignRight, List, ListOrdered, IndentDecrease, IndentIncrease,
-  Palette, MoveVertical
-} from './icons';
-
 interface Suggestion {
   category: string;
   issue: string;
   suggestion: string;
   explanation: string;
-  position: number;
+  position?: number;
 }
 
 const TextEditor: React.FC = () => {
@@ -125,7 +139,6 @@ const TextEditor: React.FC = () => {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState('');
-  const [isDarkMode, setIsDarkMode] = useState(false);
   const [activeCategory, setActiveCategory] = useState('all');
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showLinkDialog, setShowLinkDialog] = useState(false);
@@ -134,20 +147,52 @@ const TextEditor: React.FC = () => {
   const [activeTooltip, setActiveTooltip] = useState<Suggestion | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0, isBelow: false });
   const editorRef = useRef<HTMLDivElement>(null);
+  
+  const [apiKey, setApiKey] = useState(() => localStorage.getItem('intelliWriteApiKey') || '');
+  const [tempApiKey, setTempApiKey] = useState('');
+  const [freeUses, setFreeUses] = useState(() => parseInt(localStorage.getItem('intelliWriteFreeUses') || '5', 10));
+  const [showKeySaved, setShowKeySaved] = useState(false);
 
-  useEffect(() => {
-    // Sync with landing page's dark mode
-    const isParentDark = document.documentElement.classList.contains('dark');
-    setIsDarkMode(isParentDark);
-
-    const observer = new MutationObserver(() => {
-        setIsDarkMode(document.documentElement.classList.contains('dark'));
+  const saveApiKey = () => {
+    localStorage.setItem('intelliWriteApiKey', tempApiKey);
+    setApiKey(tempApiKey);
+    setShowKeySaved(true);
+    setTimeout(() => setShowKeySaved(false), 2000);
+  };
+  
+  const getMockSuggestions = (): Promise<string> => {
+    return new Promise(resolve => {
+      setTimeout(() => {
+        const mockSuggestions = [
+          {
+            "category": "style",
+            "issue": "make sure that",
+            "suggestion": "ensure",
+            "explanation": "This is a more concise and professional alternative."
+          },
+          {
+            "category": "grammar",
+            "issue": "beneficial to humanity",
+            "suggestion": "beneficial for humanity",
+            "explanation": "'Beneficial for' is often preferred when discussing benefits to a group."
+          },
+          {
+            "category": "clarity",
+            "issue": "very many more characteristics",
+            "suggestion": "many other characteristics",
+            "explanation": "'Very many' is redundant. 'Many' is sufficient and more direct."
+          },
+           {
+            "category": "spelling",
+            "issue": "probelm-solve",
+            "suggestion": "problem-solve",
+            "explanation": "Corrected spelling of 'problem'."
+          }
+        ];
+        resolve(JSON.stringify(mockSuggestions));
+      }, 1500); // Simulate network delay
     });
-
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-
-    return () => observer.disconnect();
-  }, []);
+  };
 
   const categories = [
     { id: 'all', label: t('all'), color: 'bg-purple-500' },
@@ -377,14 +422,50 @@ const TextEditor: React.FC = () => {
       setError(t('pleaseEnterText'));
       return;
     }
+    
+    if (freeUses <= 0 && !apiKey) {
+      setError(t('apiKeyRequired'));
+      return;
+    }
 
     setIsAnalyzing(true);
     setError('');
     setSuggestions([]);
 
     try {
-      const prompt = `Analyze the following text...`;
-      const response = await window.claude.complete(prompt);
+      let response;
+      if (freeUses > 0) {
+        response = await getMockSuggestions();
+        const newFreeUses = freeUses - 1;
+        setFreeUses(newFreeUses);
+        localStorage.setItem('intelliWriteFreeUses', newFreeUses.toString());
+      } else {
+        const ai = new GoogleGenAI({ apiKey });
+        const responseSchema = {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              category: { type: Type.STRING },
+              issue: { type: Type.STRING },
+              suggestion: { type: Type.STRING },
+              explanation: { type: Type.STRING },
+            },
+            required: ["category", "issue", "suggestion", "explanation"]
+          }
+        };
+        const prompt = `Analyze the following text for grammar, spelling, punctuation, style, and clarity issues. For each issue, identify the problematic text ("issue"), provide a concise correction ("suggestion"), a brief "explanation" for the change, and the "category" of the issue (one of: "grammar", "spelling", "punctuation", "style", "clarity"). Respond ONLY with a valid JSON array of suggestions based on the provided schema. Do not include any introductory text, backticks, or other formatting. The text to analyze is:\n\n---\n\n${text}`;
+        
+        const genAIResponse = await ai.models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: prompt,
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: responseSchema
+          }
+        });
+        response = genAIResponse.text;
+      }
       
       try {
         const parsedSuggestions = JSON.parse(response);
@@ -449,10 +530,8 @@ const TextEditor: React.FC = () => {
       title={title}
       className={`p-2 rounded transition-colors ${
         active 
-          ? isDarkMode ? 'bg-indigo-600 text-white' : 'bg-indigo-500 text-white'
-          : isDarkMode 
-            ? 'hover:bg-slate-700 text-slate-400 hover:text-white' 
-            : 'hover:bg-slate-200 text-slate-600 hover:text-slate-900'
+          ? 'bg-indigo-500 dark:bg-indigo-600 text-white'
+          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-700'
       }`}
     >
       <Icon className="w-4 h-4" />
@@ -460,35 +539,35 @@ const TextEditor: React.FC = () => {
   );
 
   const ToolbarSeparator = () => (
-    <div className={`w-px h-6 ${isDarkMode ? 'bg-slate-700' : 'bg-slate-300'}`} />
+    <div className="w-px h-6 bg-slate-300 dark:bg-slate-700" />
   );
 
   return (
-    <div className={`transition-colors duration-300 border rounded-xl shadow-2xl shadow-indigo-500/10 ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+    <div className="transition-colors duration-300 border rounded-xl shadow-2xl shadow-indigo-500/10 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
         <div className="grid grid-cols-1 lg:grid-cols-2">
           {/* Editor Panel */}
-          <div className={`rounded-xl p-6 relative ${isDarkMode ? 'bg-slate-900' : 'bg-white'}`}>
+          <div className="rounded-xl p-6 relative bg-white dark:bg-slate-900">
              <div className="flex justify-between items-center mb-4">
-              <h2 className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+              <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
                 {t('yourText')}
               </h2>
               <div className="flex gap-2">
-                <button onClick={loadSampleText} className={`px-3 py-1 text-sm rounded-lg transition-colors flex items-center gap-1 ${ isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-700' }`} >
+                <button onClick={loadSampleText} className="px-3 py-1 text-sm rounded-lg transition-colors flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300" >
                   <FileText className="w-4 h-4" />
                   {t('sample')}
                 </button>
-                <button onClick={copyText} className={`px-3 py-1 text-sm rounded-lg transition-colors flex items-center gap-1 ${ isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-700' }`}>
+                <button onClick={copyText} className="px-3 py-1 text-sm rounded-lg transition-colors flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300">
                   <Copy className="w-4 h-4" />
                   {t('copy')}
                 </button>
               </div>
             </div>
 
-            <div className={`flex flex-wrap items-center gap-1 p-2 mb-2 rounded-lg border ${ isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200' }`}>
-              <select onChange={(e) => formatText('fontName', e.target.value)} defaultValue="Arial" className={`px-2 py-1 rounded text-sm ${ isDarkMode ? 'bg-slate-700 text-slate-300 border-slate-600' : 'bg-white text-slate-700 border-slate-300' }`} title={t('fontFamily')} >
+            <div className="flex flex-wrap items-center gap-1 p-2 mb-2 rounded-lg border bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+              <select onChange={(e) => formatText('fontName', e.target.value)} defaultValue="Arial" className="px-2 py-1 rounded text-sm bg-white text-slate-700 border-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600" title={t('fontFamily')} >
                 {fonts.map(font => <option key={font.value} value={font.value}>{font.label}</option>)}
               </select>
-              <select onChange={(e) => document.execCommand('fontSize', false, (textSizes.findIndex(s => s.value === e.target.value) + 1).toString())} defaultValue="16px" className={`px-2 py-1 rounded text-sm ${ isDarkMode ? 'bg-slate-700 text-slate-300 border-slate-600' : 'bg-white text-slate-700 border-slate-300' }`} title={t('fontSize')} >
+              <select onChange={(e) => document.execCommand('fontSize', false, (textSizes.findIndex(s => s.value === e.target.value) + 1).toString())} defaultValue="16px" className="px-2 py-1 rounded text-sm bg-white text-slate-700 border-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600" title={t('fontSize')} >
                 {textSizes.map(size => <option key={size.value} value={size.value}>{size.label}</option>)}
               </select>
               <ToolbarSeparator />
@@ -499,7 +578,7 @@ const TextEditor: React.FC = () => {
               <div className="relative" data-dropdown="color">
                 <ToolbarButton icon={Palette} onClick={() => setShowColorPicker(!showColorPicker)} title={t('textColor')} />
                 {showColorPicker && (
-                  <div className={`absolute top-10 left-0 p-2 rounded-lg shadow-lg z-10 ${ isDarkMode ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200' }`}>
+                  <div className="absolute top-10 left-0 p-2 rounded-lg shadow-lg z-10 bg-white border border-slate-200 dark:bg-slate-800 dark:border-slate-700">
                     <div className="grid grid-cols-5 gap-1">
                       {colors.map(color => <button key={color} onClick={() => { formatText('foreColor', color); setShowColorPicker(false); }} className="w-6 h-6 rounded border border-slate-400" style={{ backgroundColor: color }} />)}
                     </div>
@@ -515,10 +594,10 @@ const TextEditor: React.FC = () => {
               <div className="relative" data-dropdown="line-spacing">
                 <ToolbarButton icon={MoveVertical} onClick={() => setShowLineSpacing(!showLineSpacing)} title={t('lineSpacing')} />
                 {showLineSpacing && (
-                  <div className={`absolute top-10 left-0 p-2 rounded-lg shadow-lg z-10 ${ isDarkMode ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'}`}>
+                  <div className="absolute top-10 left-0 p-2 rounded-lg shadow-lg z-10 bg-white border border-slate-200 dark:bg-slate-800 dark:border-slate-700">
                     <div className="flex flex-col gap-1">
                       {lineSpacings.map(spacing => (
-                        <button key={spacing.value} onClick={() => { if(editorRef.current) editorRef.current.style.lineHeight = spacing.value; setShowLineSpacing(false); }} className={`px-3 py-1 text-sm text-left rounded hover:bg-opacity-10 ${ isDarkMode ? 'hover:bg-white text-slate-300' : 'hover:bg-black text-slate-700' }`}>
+                        <button key={spacing.value} onClick={() => { if(editorRef.current) editorRef.current.style.lineHeight = spacing.value; setShowLineSpacing(false); }} className="px-3 py-1 text-sm text-left rounded text-slate-700 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-700">
                           {spacing.label}
                         </button>
                       ))}
@@ -535,21 +614,21 @@ const TextEditor: React.FC = () => {
 
             {showLinkDialog && (
               <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-slate-800' : 'bg-white'}`}>
-                  <h3 className={`text-lg font-semibold mb-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{t('addLinkTitle')}</h3>
-                  <input type="text" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} placeholder={t('enterUrl')} className={`w-64 px-3 py-2 rounded border ${ isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'}`} />
+                <div className="p-4 rounded-lg bg-white dark:bg-slate-800">
+                  <h3 className="text-lg font-semibold mb-2 text-slate-900 dark:text-white">{t('addLinkTitle')}</h3>
+                  <input type="text" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} placeholder={t('enterUrl')} className="w-64 px-3 py-2 rounded border bg-slate-50 border-slate-300 text-slate-900 dark:bg-slate-900 dark:border-slate-700 dark:text-white" />
                   <div className="flex gap-2 mt-3">
                     <button onClick={insertLink} className="px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600">{t('add')}</button>
-                    <button onClick={() => { setShowLinkDialog(false); setLinkUrl(''); }} className={`px-4 py-2 rounded ${ isDarkMode ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-200 text-slate-700 hover:bg-slate-300' }`}>{t('cancel')}</button>
+                    <button onClick={() => { setShowLinkDialog(false); setLinkUrl(''); }} className="px-4 py-2 rounded bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600">{t('cancel')}</button>
                   </div>
                 </div>
               </div>
             )}
             
-            <div ref={editorRef} contentEditable={true} suppressContentEditableWarning={true} onInput={updateContent} onPaste={handlePaste} className={`w-full h-96 p-4 rounded-lg border transition-colors overflow-y-auto focus:outline-none focus:ring-2 ${ isDarkMode ? 'bg-slate-800 border-slate-700 text-white focus:ring-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:ring-indigo-400' }`} style={{ minHeight: '24rem', fontFamily: 'Arial, sans-serif', fontSize: '16px', lineHeight: '1.5' }} />
+            <div ref={editorRef} contentEditable={true} suppressContentEditableWarning={true} onInput={updateContent} onPaste={handlePaste} className="w-full h-96 p-4 rounded-lg border transition-colors overflow-y-auto focus:outline-none focus:ring-2 bg-slate-50 border-slate-200 text-slate-900 focus:ring-indigo-400 dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:focus:ring-indigo-500" style={{ minHeight: '24rem', fontFamily: 'Arial, sans-serif', fontSize: '16px', lineHeight: '1.5' }} />
             
             <div className="mt-4 flex justify-between items-center">
-              <span className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{text.length} {t('characters')}</span>
+              <span className="text-sm text-slate-600 dark:text-slate-400">{text.length} {t('characters')}</span>
               <button onClick={analyzeText} disabled={isAnalyzing || !text.trim()} className={`px-6 py-2 rounded-lg font-medium transition-all transform hover:scale-105 flex items-center gap-2 ${ isAnalyzing || !text.trim() ? 'bg-slate-600 text-slate-400 cursor-not-allowed' : 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:from-indigo-600 hover:to-purple-700 shadow-lg' }`}>
                 {isAnalyzing ? (<><Loader2 className="w-4 h-4 animate-spin" />{t('analyzing')}</>) : (<><Sparkles className="w-4 h-4" />{t('analyzeText')}</>)}
               </button>
@@ -558,45 +637,48 @@ const TextEditor: React.FC = () => {
             {error && (<div className="mt-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20"><p className="text-red-500 text-sm">{error}</p></div>)}
 
             {activeTooltip && (
-              <div data-tooltip className={`absolute z-20 p-3 rounded-lg shadow-xl border ${ isDarkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200' }`} style={{ top: `${tooltipPosition.top}px`, left: `${tooltipPosition.left}px`, transform: tooltipPosition.isBelow ? 'translateX(-50%)' : 'translate(-50%, -100%)', maxWidth: '300px' }}>
+              <div data-tooltip className="absolute z-20 p-3 rounded-lg shadow-xl border bg-white border-slate-200 dark:bg-slate-900 dark:border-slate-700" style={{ top: `${tooltipPosition.top}px`, left: `${tooltipPosition.left}px`, transform: tooltipPosition.isBelow ? 'translateX(-50%)' : 'translate(-50%, -100%)', maxWidth: '300px' }}>
                 <div className="flex items-center gap-2 mb-2"><span className={`inline-block px-2 py-1 rounded-full text-xs font-medium text-white ${getCategoryColor(activeTooltip.category)}`}>{activeTooltip.category}</span></div>
                 <div className="space-y-2 mb-3">
                   <div className="flex items-center gap-2 text-sm">
-                    <span className={`line-through ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>{activeTooltip.issue}</span>
-                    <span className={isDarkMode ? 'text-slate-500' : 'text-slate-400'}>→</span>
-                    <span className={`font-medium ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>{activeTooltip.suggestion}</span>
+                    <span className="line-through text-red-600 dark:text-red-400">{activeTooltip.issue}</span>
+                    <span className="text-slate-400 dark:text-slate-500">→</span>
+                    <span className="font-medium text-green-600 dark:text-green-400">{activeTooltip.suggestion}</span>
                   </div>
-                  <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{activeTooltip.explanation}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{activeTooltip.explanation}</p>
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => applySuggestion(activeTooltip)} className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600 transition-colors">{t('accept')}</button>
                   <button onClick={() => dismissSuggestion(activeTooltip)} className="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600 transition-colors">{t('reject')}</button>
-                  <button onClick={() => setActiveTooltip(null)} className={`px-3 py-1 rounded text-sm transition-colors ${ isDarkMode ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-200 text-slate-700 hover:bg-slate-300' }`}>{t('cancel')}</button>
+                  <button onClick={() => setActiveTooltip(null)} className="px-3 py-1 rounded text-sm transition-colors bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600">{t('cancel')}</button>
                 </div>
-                <div className={`absolute w-3 h-3 transform rotate-45 ${ isDarkMode ? 'bg-slate-900' : 'bg-white' }`} style={{ ...(tooltipPosition.isBelow ? { top: '-6px', left: '50%', transform: 'translateX(-50%) rotate(45deg)', borderLeft: `1px solid ${isDarkMode ? '#374151' : '#e5e7eb'}`, borderTop: `1px solid ${isDarkMode ? '#374151' : '#e5e7eb'}` } : { bottom: '-6px', left: '50%', transform: 'translateX(-50%) rotate(45deg)', borderRight: `1px solid ${isDarkMode ? '#374151' : '#e5e7eb'}`, borderBottom: `1px solid ${isDarkMode ? '#374151' : '#e5e7eb'}` }) }} />
+                <div 
+                   className={`absolute w-3 h-3 transform rotate-45 bg-white dark:bg-slate-900 ${ tooltipPosition.isBelow ? 'border-l border-t' : 'border-r border-b' } border-slate-200 dark:border-slate-700`} 
+                   style={{ ...(tooltipPosition.isBelow ? { top: '-6px', left: '50%', transform: 'translateX(-50%) rotate(45deg)' } : { bottom: '-6px', left: '50%', transform: 'translateX(-50%) rotate(45deg)' }) }} 
+                />
               </div>
             )}
           </div>
 
           {/* Suggestions Panel */}
-          <div className={`rounded-xl p-6 border-t lg:border-t-0 lg:border-l ${isDarkMode ? 'bg-slate-900/50 border-slate-800' : 'bg-slate-50/50 border-slate-200'}`}>
-            <h2 className={`text-xl font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{t('suggestions')}</h2>
+          <div className="rounded-xl p-6 border-t lg:border-t-0 lg:border-l flex flex-col bg-slate-50/50 border-slate-200 dark:bg-slate-900/50 dark:border-slate-800">
+            <h2 className="text-xl font-semibold mb-4 text-slate-900 dark:text-white">{t('suggestions')}</h2>
             <div className="flex flex-wrap gap-2 mb-4">
               {categories.map(category => (
-                <button key={category.id} onClick={() => setActiveCategory(category.id)} className={`px-3 py-1 rounded-full text-sm font-medium transition-all ${ activeCategory === category.id ? `${category.color} text-white` : isDarkMode ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-700 hover:bg-slate-200' }`}>
+                <button key={category.id} onClick={() => setActiveCategory(category.id)} className={`px-3 py-1 rounded-full text-sm font-medium transition-all ${ activeCategory === category.id ? `${category.color} text-white` : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700' }`}>
                   {category.label}
                   {suggestions.filter(s => category.id === 'all' || s.category === category.id).length > 0 && <span className="ml-1">({suggestions.filter(s => category.id === 'all' || s.category === category.id).length})</span>}
                 </button>
               ))}
             </div>
-            <div className="space-y-3 h-96 overflow-y-auto pr-2">
+            <div className="space-y-3 flex-grow h-80 overflow-y-auto pr-2">
               {filteredSuggestions.length === 0 ? (
-                <div className={`text-center py-12 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                <div className="text-center py-12 text-slate-400 dark:text-slate-500">
                   {suggestions.length === 0 ? t('clickAnalyzeText') : t('noSuggestionsCategory')}
                 </div>
               ) : (
                 filteredSuggestions.map((suggestion, index) => (
-                  <div key={index} className={`p-4 rounded-lg border transition-all hover:shadow-md ${ isDarkMode ? 'bg-slate-800 border-slate-700 hover:border-slate-600' : 'bg-white border-slate-200 hover:border-slate-300' }`}>
+                  <div key={index} className="p-4 rounded-lg border transition-all hover:shadow-md bg-white border-slate-200 hover:border-slate-300 dark:bg-slate-800 dark:border-slate-700 dark:hover:border-slate-600">
                     <div className="flex justify-between items-start mb-2">
                       <div className="flex items-center gap-2"><span className={`inline-block px-2 py-1 rounded-full text-xs font-medium text-white ${getCategoryColor(suggestion.category)}`}>{suggestion.category}</span></div>
                       <div className="flex gap-1">
@@ -606,21 +688,51 @@ const TextEditor: React.FC = () => {
                     </div>
                     <div className="space-y-2">
                       <div className="flex items-center gap-2 text-sm">
-                        <span className={`line-through ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>{suggestion.issue}</span>
-                        <span className={isDarkMode ? 'text-slate-500' : 'text-slate-400'}>→</span>
-                        <span className={`font-medium ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>{suggestion.suggestion}</span>
+                        <span className="line-through text-red-600 dark:text-red-400">{suggestion.issue}</span>
+                        <span className="text-slate-400 dark:text-slate-500">→</span>
+                        <span className="font-medium text-green-600 dark:text-green-400">{suggestion.suggestion}</span>
                       </div>
-                      <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{suggestion.explanation}</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-400">{suggestion.explanation}</p>
                     </div>
                   </div>
                 ))
               )}
             </div>
             {suggestions.length > 0 && (
-              <div className={`mt-4 pt-4 border-t ${isDarkMode ? 'border-slate-700' : 'border-slate-200'}`}>
+              <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
                 <button onClick={() => { if (!editorRef.current) return; let content = editorRef.current.innerHTML; content = content.replace(/<mark[^>]*>(.*?)<\/mark>/g, '$1'); suggestions.forEach(suggestion => { content = content.replace(suggestion.issue, suggestion.suggestion); }); editorRef.current.innerHTML = content; updateContent(); setSuggestions([]); }} className="w-full py-2 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 text-white font-medium hover:from-green-600 hover:to-emerald-700 transition-all">{t('applyAllSuggestions')}</button>
               </div>
             )}
+            <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                {freeUses > 0 ? (
+                    <p className="text-sm text-center text-slate-600 dark:text-slate-400">
+                        You have <span className="font-bold text-indigo-500">{freeUses}</span> {t('freeUsesLeft')}.
+                    </p>
+                ) : (
+                    <div className="space-y-3">
+                        <p className="text-sm text-center font-semibold text-amber-600 dark:text-amber-400">
+                           {t('outOfFreeUses')}
+                        </p>
+                        <p className="text-xs text-center text-slate-500 dark:text-slate-400">
+                           {t('enterApiKey')}
+                        </p>
+                        <div className="flex items-center gap-2">
+                             <KeyRound className="w-4 h-4 flex-shrink-0 text-slate-500 dark:text-slate-400" />
+                            <input
+                                type="password"
+                                placeholder={t('apiKey')}
+                                value={tempApiKey}
+                                onChange={(e) => setTempApiKey(e.target.value)}
+                                className="w-full px-3 py-1.5 rounded-md text-sm border bg-white border-slate-300 text-slate-900 dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                            />
+                            <button onClick={saveApiKey} className="px-4 py-1.5 text-sm font-semibold text-white bg-indigo-500 rounded-md hover:bg-indigo-600 transition-colors">
+                                {t('saveKey')}
+                            </button>
+                        </div>
+                        {showKeySaved && <p className="text-sm text-green-500 text-center animate-pulse">{t('keySaved')}</p>}
+                    </div>
+                )}
+            </div>
           </div>
         </div>
       </div>

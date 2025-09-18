@@ -4,17 +4,18 @@ import { Sparkles, Sun, Moon, Menu, X } from './icons';
 interface HeaderProps {
   isDarkMode: boolean;
   setIsDarkMode: React.Dispatch<React.SetStateAction<boolean>>;
-  onGetStartedClick: () => void;
+  onLaunchEditor: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ isDarkMode, setIsDarkMode, onGetStartedClick }) => {
+const Header: React.FC<HeaderProps> = ({ isDarkMode, setIsDarkMode, onLaunchEditor }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const navLinks = [
     { name: 'Features', href: '#features' },
     { name: 'Demo', href: '#demo' },
-    { name: 'Pricing', href: '#' },
-    { name: 'About', href: '#' },
+    { name: 'Pricing', href: '#pricing' },
+    { name: 'About', href: '#about' },
+    { name: 'Contact', href: '#contact' },
   ];
 
   return (
@@ -25,7 +26,7 @@ const Header: React.FC<HeaderProps> = ({ isDarkMode, setIsDarkMode, onGetStarted
             <Sparkles className="w-8 h-8 text-indigo-500" />
             <span className="text-2xl font-bold text-slate-900 dark:text-white">IntelliWrite</span>
           </a>
-          <nav className="hidden md:flex items-center gap-8">
+          <nav className="hidden md:flex items-center gap-6">
             {navLinks.map((link) => (
               <a key={link.name} href={link.href} className="text-sm font-medium hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors">
                 {link.name}
@@ -41,11 +42,11 @@ const Header: React.FC<HeaderProps> = ({ isDarkMode, setIsDarkMode, onGetStarted
               {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
             <button
-              onClick={onGetStartedClick}
-              className="hidden sm:inline-block px-4 py-2 text-sm font-semibold text-white bg-indigo-500 rounded-lg hover:bg-indigo-600 transition-colors"
-            >
-              Get Started
-            </button>
+                onClick={onLaunchEditor}
+                className="sm:inline-flex items-center hidden justify-center px-4 py-2 text-sm font-semibold text-white bg-indigo-500 rounded-md shadow-sm hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+              >
+                Launch Editor
+              </button>
             <div className="md:hidden">
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -67,11 +68,11 @@ const Header: React.FC<HeaderProps> = ({ isDarkMode, setIsDarkMode, onGetStarted
               </a>
             ))}
             <button
-              onClick={() => { onGetStartedClick(); setIsMenuOpen(false); }}
-              className="mt-2 px-6 py-2 text-lg font-semibold text-white bg-indigo-500 rounded-lg hover:bg-indigo-600 transition-colors"
-            >
-              Get Started
-            </button>
+                onClick={() => { onLaunchEditor(); setIsMenuOpen(false); }}
+                className="sm:hidden hidden inline-flex items-center justify-center px-6 py-3 text-lg font-semibold text-white bg-indigo-500 rounded-md shadow-sm hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors w-4/5 mt-2"
+              >
+                Launch Editor
+              </button>
           </nav>
         </div>
       )}

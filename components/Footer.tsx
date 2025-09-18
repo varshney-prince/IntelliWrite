@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Sparkles, Twitter, Github, Linkedin } from './icons';
 
@@ -6,9 +5,9 @@ const Footer: React.FC = () => {
   const footerLinks = [
     { name: 'Features', href: '#features' },
     { name: 'Demo', href: '#demo' },
-    { name: 'Pricing', href: '#' },
-    { name: 'About', href: '#' },
-    { name: 'Contact', href: '#' },
+    { name: 'Pricing', href: '#pricing' },
+    { name: 'About', href: '#about' },
+    { name: 'Contact', href: '#contact' },
   ];
 
   const socialLinks = [

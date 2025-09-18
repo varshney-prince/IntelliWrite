@@ -37,7 +37,7 @@ const TextEditorModal: React.FC<TextEditorModalProps> = ({ isOpen, onClose }) =>
         document.body.style.overflow = 'unset';
       };
     }
-  }, [isOpen]);
+  }, [isOpen, handleClose]);
 
   useEffect(() => {
       if (show) {
@@ -49,7 +49,7 @@ const TextEditorModal: React.FC<TextEditorModalProps> = ({ isOpen, onClose }) =>
   }, [show]);
 
   const handleBackdropClick = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (modalContentRef.current && modalContentRef.current === event.target) {
+    if (modalRef.current === event.target) {
       handleClose();
     }
   };
