@@ -24,7 +24,7 @@ const Demo: React.FC<DemoProps> = ({ onTryDemoClick }) => {
                 <p className="mt-2 text-slate-600 dark:text-slate-400">Click the button below to launch the full-featured editor in a focused, distraction-free environment.</p>
                 <button
                     onClick={onTryDemoClick}
-                    className="mt-6 px-8 py-3 font-semibold text-lg text-white bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg shadow-lg hover:from-indigo-600 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all transform hover:scale-105 flex items-center gap-3 mx-auto"
+                    className="mt-6 px-8 py-3 font-semibold text-lg text-white bg-gradient-to-r from-indigo-600 to-purple-700 rounded-lg shadow-lg hover:from-indigo-700 hover:to-purple-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all transform hover:scale-105 flex items-center gap-3 mx-auto"
                 >
                     <Sparkles className="w-6 h-6" />
                     Launch the Editor

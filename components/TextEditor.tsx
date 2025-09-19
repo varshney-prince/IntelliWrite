@@ -564,10 +564,10 @@ const TextEditor: React.FC = () => {
             </div>
 
             <div className="flex flex-wrap items-center gap-1 p-2 mb-2 rounded-lg border bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-              <select onChange={(e) => formatText('fontName', e.target.value)} defaultValue="Arial" className="px-2 py-1 rounded text-sm bg-white text-slate-700 border-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600" title={t('fontFamily')} >
+              <select onChange={(e) => formatText('fontName', e.target.value)} defaultValue="Arial" className="px-2 py-1 rounded text-sm bg-white text-slate-800 border-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600" title={t('fontFamily')} >
                 {fonts.map(font => <option key={font.value} value={font.value}>{font.label}</option>)}
               </select>
-              <select onChange={(e) => document.execCommand('fontSize', false, (textSizes.findIndex(s => s.value === e.target.value) + 1).toString())} defaultValue="16px" className="px-2 py-1 rounded text-sm bg-white text-slate-700 border-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600" title={t('fontSize')} >
+              <select onChange={(e) => document.execCommand('fontSize', false, (textSizes.findIndex(s => s.value === e.target.value) + 1).toString())} defaultValue="16px" className="px-2 py-1 rounded text-sm bg-white text-slate-800 border-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600" title={t('fontSize')} >
                 {textSizes.map(size => <option key={size.value} value={size.value}>{size.label}</option>)}
               </select>
               <ToolbarSeparator />
@@ -616,16 +616,16 @@ const TextEditor: React.FC = () => {
               <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                 <div className="p-4 rounded-lg bg-white dark:bg-slate-800">
                   <h3 className="text-lg font-semibold mb-2 text-slate-900 dark:text-white">{t('addLinkTitle')}</h3>
-                  <input type="text" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} placeholder={t('enterUrl')} className="w-64 px-3 py-2 rounded border bg-slate-50 border-slate-300 text-slate-900 dark:bg-slate-900 dark:border-slate-700 dark:text-white" />
+                  <input type="text" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} placeholder={t('enterUrl')} className="w-64 px-3 py-2 rounded border bg-white border-slate-300 text-slate-900 dark:bg-slate-900 dark:border-slate-700 dark:text-white" />
                   <div className="flex gap-2 mt-3">
-                    <button onClick={insertLink} className="px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600">{t('add')}</button>
+                    <button onClick={insertLink} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">{t('add')}</button>
                     <button onClick={() => { setShowLinkDialog(false); setLinkUrl(''); }} className="px-4 py-2 rounded bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600">{t('cancel')}</button>
                   </div>
                 </div>
               </div>
             )}
             
-            <div ref={editorRef} contentEditable={true} suppressContentEditableWarning={true} onInput={updateContent} onPaste={handlePaste} className="w-full h-96 p-4 rounded-lg border transition-colors overflow-y-auto focus:outline-none focus:ring-2 bg-slate-50 border-slate-200 text-slate-900 focus:ring-indigo-400 dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:focus:ring-indigo-500" style={{ minHeight: '24rem', fontFamily: 'Arial, sans-serif', fontSize: '16px', lineHeight: '1.5' }} />
+            <div ref={editorRef} contentEditable={true} suppressContentEditableWarning={true} onInput={updateContent} onPaste={handlePaste} className="w-full h-96 p-4 rounded-lg border transition-colors overflow-y-auto focus:outline-none focus:ring-2 bg-white border-slate-300 text-slate-900 focus:ring-indigo-500 dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:focus:ring-indigo-500" style={{ minHeight: '24rem', fontFamily: 'Arial, sans-serif', fontSize: '16px', lineHeight: '1.5' }} />
             
             <div className="mt-4 flex justify-between items-center">
               <span className="text-sm text-slate-600 dark:text-slate-400">{text.length} {t('characters')}</span>
@@ -673,12 +673,12 @@ const TextEditor: React.FC = () => {
             </div>
             <div className="space-y-3 flex-grow h-80 overflow-y-auto pr-2">
               {filteredSuggestions.length === 0 ? (
-                <div className="text-center py-12 text-slate-400 dark:text-slate-500">
+                <div className="text-center py-12 text-slate-500 dark:text-slate-500">
                   {suggestions.length === 0 ? t('clickAnalyzeText') : t('noSuggestionsCategory')}
                 </div>
               ) : (
                 filteredSuggestions.map((suggestion, index) => (
-                  <div key={index} className="p-4 rounded-lg border transition-all hover:shadow-md bg-white border-slate-200 hover:border-slate-300 dark:bg-slate-800 dark:border-slate-700 dark:hover:border-slate-600">
+                  <div key={index} className="p-4 rounded-lg border transition-all hover:shadow-md bg-white border-slate-300 hover:border-slate-400 dark:bg-slate-800 dark:border-slate-700 dark:hover:border-slate-600">
                     <div className="flex justify-between items-start mb-2">
                       <div className="flex items-center gap-2"><span className={`inline-block px-2 py-1 rounded-full text-xs font-medium text-white ${getCategoryColor(suggestion.category)}`}>{suggestion.category}</span></div>
                       <div className="flex gap-1">
@@ -725,7 +725,7 @@ const TextEditor: React.FC = () => {
                                 onChange={(e) => setTempApiKey(e.target.value)}
                                 className="w-full px-3 py-1.5 rounded-md text-sm border bg-white border-slate-300 text-slate-900 dark:bg-slate-800 dark:border-slate-700 dark:text-white"
                             />
-                            <button onClick={saveApiKey} className="px-4 py-1.5 text-sm font-semibold text-white bg-indigo-500 rounded-md hover:bg-indigo-600 transition-colors">
+                            <button onClick={saveApiKey} className="px-4 py-1.5 text-sm font-semibold text-white bg-indigo-600 rounded-md hover:bg-indigo-700 transition-colors">
                                 {t('saveKey')}
                             </button>
                         </div>
