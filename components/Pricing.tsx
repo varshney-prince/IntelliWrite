@@ -67,13 +67,13 @@ const Pricing: React.FC = () => {
               key={tier.name}
               className={`relative flex flex-col p-8 rounded-2xl border ${
                 tier.main
-                  ? 'border-indigo-600 ring-2 ring-indigo-600'
+                  ? 'border-indigo-500 ring-2 ring-indigo-500'
                   : 'border-slate-200 dark:border-slate-800'
-              } bg-white dark:bg-slate-900/50`}
+              } bg-slate-50 dark:bg-slate-900/50`}
             >
               {tier.main && (
                 <div className="absolute top-0 -translate-y-1/2 left-1/2 -translate-x-1/2">
-                    <span className="inline-flex items-center px-4 py-1 text-sm font-semibold text-white bg-indigo-600 rounded-full">
+                    <span className="inline-flex items-center px-4 py-1 text-sm font-semibold text-white bg-indigo-500 rounded-full">
                         Most Popular
                     </span>
                 </div>
@@ -87,15 +87,15 @@ const Pricing: React.FC = () => {
               <ul className="mt-6 space-y-4 flex-grow">
                 {tier.features.map((feature) => (
                   <li key={feature} className="flex items-start">
-                    <Check className="w-5 h-5 text-indigo-600 dark:text-indigo-500 mr-3 flex-shrink-0" />
+                    <Check className="w-5 h-5 text-indigo-500 mr-3 flex-shrink-0" />
                     <span className="text-sm text-slate-600 dark:text-slate-400">{feature}</span>
                   </li>
                 ))}
               </ul>
               <a href="#" className={`block w-full text-center mt-8 px-6 py-3 text-sm font-semibold rounded-lg transition-colors ${
                   tier.main 
-                  ? 'text-white bg-indigo-600 hover:bg-indigo-700'
-                  : 'text-indigo-600 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-500/10 hover:bg-indigo-200 dark:hover:bg-indigo-500/20'
+                  ? 'text-white bg-indigo-500 hover:bg-indigo-600'
+                  : 'text-indigo-500 dark:text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20'
               }`}>
                 {tier.cta}
               </a>

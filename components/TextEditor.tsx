@@ -4,7 +4,7 @@ import {
   Sparkles, Check, X, Loader2, Sun, Moon, Copy, FileText,
   Bold, Italic, Underline, Link, AlignLeft, AlignCenter, 
   AlignRight, List, ListOrdered, IndentDecrease, IndentIncrease,
-  Palette, MoveVertical, KeyRound
+  Palette, MoveVertical, Wand
 } from './icons';
 
 const TRANSLATIONS = {
@@ -53,13 +53,13 @@ const TRANSLATIONS = {
     "failedToParse": "Failed to parse suggestions. Please try again.",
     "reject": "Reject",
     "accept": "Accept",
-    "freeUsesLeft": "free analyses remaining",
-    "outOfFreeUses": "You are out of free uses.",
-    "enterApiKey": "Please enter your API key to continue.",
-    "apiKey": "API Key",
-    "saveKey": "Save Key",
-    "keySaved": "API Key saved successfully!",
-    "apiKeyRequired": "You are out of free trials. Please set an API key to continue."
+    "rewriteSelection": "Rewrite Selection (beta)",
+    "rewrite": "Rewrite",
+    "rewriting": "Rewriting...",
+    "nothingToRewrite": "Please select some text to rewrite.",
+    "original": "Original",
+    "rewritten": "Rewritten",
+    "failedToRewrite": "Failed to rewrite text. Please try again."
   },
   "es-ES": {
     "appTitle": "Asistente de Escritura IntelliWrite",
@@ -106,13 +106,13 @@ const TRANSLATIONS = {
     "failedToParse": "Error al procesar las sugerencias. Por favor intenta de nuevo.",
     "reject": "Rechazar",
     "accept": "Aceptar",
-    "freeUsesLeft": "análisis gratuitos restantes",
-    "outOfFreeUses": "Se te acabaron los usos gratuitos.",
-    "enterApiKey": "Por favor, introduce tu clave de API para continuar.",
-    "apiKey": "Clave de API",
-    "saveKey": "Guardar Clave",
-    "keySaved": "¡Clave de API guardada correctamente!",
-    "apiKeyRequired": "Se te acabaron los usos gratuitos. Por favor, introduce una clave de API para continuar."
+    "rewriteSelection": "Reescribir Selección (beta)",
+    "rewrite": "Reescribir",
+    "rewriting": "Reescribiendo...",
+    "nothingToRewrite": "Por favor selecciona algún texto para reescribir.",
+    "original": "Original",
+    "rewritten": "Reescrito",
+    "failedToRewrite": "Error al reescribir el texto. Por favor intenta de nuevo."
   }
 };
 
@@ -147,52 +147,10 @@ const TextEditor: React.FC = () => {
   const [activeTooltip, setActiveTooltip] = useState<Suggestion | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0, isBelow: false });
   const editorRef = useRef<HTMLDivElement>(null);
-  
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem('intelliWriteApiKey') || '');
-  const [tempApiKey, setTempApiKey] = useState('');
-  const [freeUses, setFreeUses] = useState(() => parseInt(localStorage.getItem('intelliWriteFreeUses') || '5', 10));
-  const [showKeySaved, setShowKeySaved] = useState(false);
-
-  const saveApiKey = () => {
-    localStorage.setItem('intelliWriteApiKey', tempApiKey);
-    setApiKey(tempApiKey);
-    setShowKeySaved(true);
-    setTimeout(() => setShowKeySaved(false), 2000);
-  };
-  
-  const getMockSuggestions = (): Promise<string> => {
-    return new Promise(resolve => {
-      setTimeout(() => {
-        const mockSuggestions = [
-          {
-            "category": "style",
-            "issue": "make sure that",
-            "suggestion": "ensure",
-            "explanation": "This is a more concise and professional alternative."
-          },
-          {
-            "category": "grammar",
-            "issue": "beneficial to humanity",
-            "suggestion": "beneficial for humanity",
-            "explanation": "'Beneficial for' is often preferred when discussing benefits to a group."
-          },
-          {
-            "category": "clarity",
-            "issue": "very many more characteristics",
-            "suggestion": "many other characteristics",
-            "explanation": "'Very many' is redundant. 'Many' is sufficient and more direct."
-          },
-           {
-            "category": "spelling",
-            "issue": "probelm-solve",
-            "suggestion": "problem-solve",
-            "explanation": "Corrected spelling of 'problem'."
-          }
-        ];
-        resolve(JSON.stringify(mockSuggestions));
-      }, 1500); // Simulate network delay
-    });
-  };
+  const [isRewriting, setIsRewriting] = useState(false);
+  const [showRewriteModal, setShowRewriteModal] = useState(false);
+  const [originalTextToRewrite, setOriginalTextToRewrite] = useState('');
+  const [rewrittenText, setRewrittenText] = useState('');
 
   const categories = [
     { id: 'all', label: t('all'), color: 'bg-purple-500' },
@@ -423,49 +381,36 @@ const TextEditor: React.FC = () => {
       return;
     }
     
-    if (freeUses <= 0 && !apiKey) {
-      setError(t('apiKeyRequired'));
-      return;
-    }
-
     setIsAnalyzing(true);
     setError('');
     setSuggestions([]);
 
     try {
-      let response;
-      if (freeUses > 0) {
-        response = await getMockSuggestions();
-        const newFreeUses = freeUses - 1;
-        setFreeUses(newFreeUses);
-        localStorage.setItem('intelliWriteFreeUses', newFreeUses.toString());
-      } else {
-        const ai = new GoogleGenAI({ apiKey });
-        const responseSchema = {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              category: { type: Type.STRING },
-              issue: { type: Type.STRING },
-              suggestion: { type: Type.STRING },
-              explanation: { type: Type.STRING },
-            },
-            required: ["category", "issue", "suggestion", "explanation"]
-          }
-        };
-        const prompt = `Analyze the following text for grammar, spelling, punctuation, style, and clarity issues. For each issue, identify the problematic text ("issue"), provide a concise correction ("suggestion"), a brief "explanation" for the change, and the "category" of the issue (one of: "grammar", "spelling", "punctuation", "style", "clarity"). Respond ONLY with a valid JSON array of suggestions based on the provided schema. Do not include any introductory text, backticks, or other formatting. The text to analyze is:\n\n---\n\n${text}`;
-        
-        const genAIResponse = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
-          contents: prompt,
-          config: {
-            responseMimeType: "application/json",
-            responseSchema: responseSchema
-          }
-        });
-        response = genAIResponse.text;
-      }
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const responseSchema = {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            category: { type: Type.STRING },
+            issue: { type: Type.STRING },
+            suggestion: { type: Type.STRING },
+            explanation: { type: Type.STRING },
+          },
+          required: ["category", "issue", "suggestion", "explanation"]
+        }
+      };
+      const prompt = `Analyze the following text for grammar, spelling, punctuation, style, and clarity issues. For each issue, identify the problematic text ("issue"), provide a concise correction ("suggestion"), a brief "explanation" for the change, and the "category" of the issue (one of: "grammar", "spelling", "punctuation", "style", "clarity"). Respond ONLY with a valid JSON array of suggestions based on the provided schema. Do not include any introductory text, backticks, or other formatting. The text to analyze is:\n\n---\n\n${text}`;
+      
+      const genAIResponse = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: responseSchema
+        }
+      });
+      const response = genAIResponse.text;
       
       try {
         const parsedSuggestions = JSON.parse(response);
@@ -503,6 +448,60 @@ const TextEditor: React.FC = () => {
     }
   };
 
+  const handleRewriteClick = async () => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0 || selection.toString().trim() === '') {
+      setError(t('nothingToRewrite'));
+      setTimeout(() => setError(''), 3000);
+      return;
+    }
+
+    const selectedText = selection.toString();
+    setOriginalTextToRewrite(selectedText);
+    setIsRewriting(true);
+    setError('');
+    setRewrittenText(''); // Clear previous rewritten text
+
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const prompt = `Rewrite the following text to be more clear, concise, and engaging. Return only the rewritten text, without any introductory phrases. Text: "${selectedText}"`;
+      
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+      });
+      
+      const newText = response.text.trim();
+      setRewrittenText(newText);
+      setShowRewriteModal(true);
+    } catch (err) {
+      console.error('Rewrite error:', err);
+      setError(t('failedToRewrite'));
+    } finally {
+      setIsRewriting(false);
+    }
+  };
+
+  const handleAcceptRewrite = () => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0 || !editorRef.current) return;
+
+    // Check if the current selection inside the editor still matches the original text
+    if (selection.toString() === originalTextToRewrite) {
+        const range = selection.getRangeAt(0);
+        range.deleteContents();
+        range.insertNode(document.createTextNode(rewrittenText));
+    } else {
+        // Fallback: if selection changed, replace the first occurrence in the editor
+        let content = editorRef.current.innerHTML;
+        editorRef.current.innerHTML = content.replace(originalTextToRewrite, rewrittenText);
+    }
+
+    updateContent();
+    setShowRewriteModal(false);
+  };
+
+
   const filteredSuggestions = activeCategory === 'all' 
     ? suggestions 
     : suggestions.filter(s => s.category === activeCategory);
@@ -523,18 +522,27 @@ const TextEditor: React.FC = () => {
     }
   };
 
-  const ToolbarButton: React.FC<{icon: React.ElementType, onClick?: () => void, onMouseDown?: (e: React.MouseEvent) => void, title: string, active?: boolean}> = ({ icon: Icon, onClick, onMouseDown, title, active = false }) => (
+  const ToolbarButton: React.FC<{
+    icon: React.ElementType, 
+    onClick?: () => void, 
+    onMouseDown?: (e: React.MouseEvent) => void, 
+    title: string, 
+    active?: boolean,
+    isLoading?: boolean,
+    disabled?: boolean
+  }> = ({ icon: Icon, onClick, onMouseDown, title, active = false, isLoading = false, disabled = false }) => (
     <button
       onClick={onClick}
       onMouseDown={onMouseDown}
       title={title}
+      disabled={disabled || isLoading}
       className={`p-2 rounded transition-colors ${
         active 
           ? 'bg-indigo-500 dark:bg-indigo-600 text-white'
           : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-700'
-      }`}
+      } disabled:opacity-50 disabled:cursor-not-allowed`}
     >
-      <Icon className="w-4 h-4" />
+      {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Icon className="w-4 h-4" />}
     </button>
   );
 
@@ -564,10 +572,10 @@ const TextEditor: React.FC = () => {
             </div>
 
             <div className="flex flex-wrap items-center gap-1 p-2 mb-2 rounded-lg border bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-              <select onChange={(e) => formatText('fontName', e.target.value)} defaultValue="Arial" className="px-2 py-1 rounded text-sm bg-white text-slate-800 border-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600" title={t('fontFamily')} >
+              <select onChange={(e) => formatText('fontName', e.target.value)} defaultValue="Arial" className="px-2 py-1 rounded text-sm bg-white text-slate-700 border-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600" title={t('fontFamily')} >
                 {fonts.map(font => <option key={font.value} value={font.value}>{font.label}</option>)}
               </select>
-              <select onChange={(e) => document.execCommand('fontSize', false, (textSizes.findIndex(s => s.value === e.target.value) + 1).toString())} defaultValue="16px" className="px-2 py-1 rounded text-sm bg-white text-slate-800 border-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600" title={t('fontSize')} >
+              <select onChange={(e) => document.execCommand('fontSize', false, (textSizes.findIndex(s => s.value === e.target.value) + 1).toString())} defaultValue="16px" className="px-2 py-1 rounded text-sm bg-white text-slate-700 border-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600" title={t('fontSize')} >
                 {textSizes.map(size => <option key={size.value} value={size.value}>{size.label}</option>)}
               </select>
               <ToolbarSeparator />
@@ -610,22 +618,50 @@ const TextEditor: React.FC = () => {
               <ToolbarButton icon={ListOrdered} onMouseDown={(e) => { e.preventDefault(); formatText('insertOrderedList'); }} title={t('numberedList')} />
               <ToolbarButton icon={IndentDecrease} onClick={() => formatText('outdent')} title={t('decreaseIndent')} />
               <ToolbarButton icon={IndentIncrease} onClick={() => formatText('indent')} title={t('increaseIndent')} />
+              <ToolbarSeparator />
+              <ToolbarButton icon={Wand} onClick={handleRewriteClick} title={t('rewriteSelection')} isLoading={isRewriting} />
             </div>
 
             {showLinkDialog && (
               <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                 <div className="p-4 rounded-lg bg-white dark:bg-slate-800">
                   <h3 className="text-lg font-semibold mb-2 text-slate-900 dark:text-white">{t('addLinkTitle')}</h3>
-                  <input type="text" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} placeholder={t('enterUrl')} className="w-64 px-3 py-2 rounded border bg-white border-slate-300 text-slate-900 dark:bg-slate-900 dark:border-slate-700 dark:text-white" />
+                  <input type="text" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} placeholder={t('enterUrl')} className="w-64 px-3 py-2 rounded border bg-slate-50 border-slate-300 text-slate-900 dark:bg-slate-900 dark:border-slate-700 dark:text-white" />
                   <div className="flex gap-2 mt-3">
-                    <button onClick={insertLink} className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">{t('add')}</button>
+                    <button onClick={insertLink} className="px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600">{t('add')}</button>
                     <button onClick={() => { setShowLinkDialog(false); setLinkUrl(''); }} className="px-4 py-2 rounded bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600">{t('cancel')}</button>
                   </div>
                 </div>
               </div>
             )}
             
-            <div ref={editorRef} contentEditable={true} suppressContentEditableWarning={true} onInput={updateContent} onPaste={handlePaste} className="w-full h-96 p-4 rounded-lg border transition-colors overflow-y-auto focus:outline-none focus:ring-2 bg-white border-slate-300 text-slate-900 focus:ring-indigo-500 dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:focus:ring-indigo-500" style={{ minHeight: '24rem', fontFamily: 'Arial, sans-serif', fontSize: '16px', lineHeight: '1.5' }} />
+            {showRewriteModal && (
+              <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className="p-6 rounded-lg bg-white dark:bg-slate-800 w-full max-w-2xl shadow-xl border border-slate-200 dark:border-slate-700">
+                    <h3 className="text-xl font-semibold mb-4 text-slate-900 dark:text-white">{t('rewrite')}</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto pr-2">
+                        <div>
+                            <h4 className="font-medium text-slate-500 dark:text-slate-400 mb-2">{t('original')}</h4>
+                            <div className="p-3 rounded-md bg-slate-100 dark:bg-slate-900 text-sm text-slate-700 dark:text-slate-300">
+                                {originalTextToRewrite}
+                            </div>
+                        </div>
+                        <div>
+                            <h4 className="font-medium text-slate-500 dark:text-slate-400 mb-2">{t('rewritten')}</h4>
+                            <div className="p-3 rounded-md bg-emerald-50 dark:bg-emerald-900/50 text-sm text-emerald-800 dark:text-emerald-200">
+                                {rewrittenText || <span className="italic text-slate-400">{t('rewriting')}</span>}
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex gap-2 mt-6 justify-end">
+                        <button onClick={handleAcceptRewrite} disabled={!rewrittenText} className="px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600 disabled:bg-indigo-300 disabled:cursor-not-allowed">{t('accept')}</button>
+                        <button onClick={() => setShowRewriteModal(false)} className="px-4 py-2 rounded bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600">{t('cancel')}</button>
+                    </div>
+                </div>
+              </div>
+            )}
+
+            <div ref={editorRef} contentEditable={true} suppressContentEditableWarning={true} onInput={updateContent} onPaste={handlePaste} className="w-full h-96 p-4 rounded-lg border transition-colors overflow-y-auto focus:outline-none focus:ring-2 bg-slate-50 border-slate-200 text-slate-900 focus:ring-indigo-400 dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:focus:ring-indigo-500" style={{ minHeight: '24rem', fontFamily: 'Arial, sans-serif', fontSize: '16px', lineHeight: '1.5' }} />
             
             <div className="mt-4 flex justify-between items-center">
               <span className="text-sm text-slate-600 dark:text-slate-400">{text.length} {t('characters')}</span>
@@ -673,12 +709,12 @@ const TextEditor: React.FC = () => {
             </div>
             <div className="space-y-3 flex-grow h-80 overflow-y-auto pr-2">
               {filteredSuggestions.length === 0 ? (
-                <div className="text-center py-12 text-slate-500 dark:text-slate-500">
+                <div className="text-center py-12 text-slate-400 dark:text-slate-500">
                   {suggestions.length === 0 ? t('clickAnalyzeText') : t('noSuggestionsCategory')}
                 </div>
               ) : (
                 filteredSuggestions.map((suggestion, index) => (
-                  <div key={index} className="p-4 rounded-lg border transition-all hover:shadow-md bg-white border-slate-300 hover:border-slate-400 dark:bg-slate-800 dark:border-slate-700 dark:hover:border-slate-600">
+                  <div key={index} className="p-4 rounded-lg border transition-all hover:shadow-md bg-white border-slate-200 hover:border-slate-300 dark:bg-slate-800 dark:border-slate-700 dark:hover:border-slate-600">
                     <div className="flex justify-between items-start mb-2">
                       <div className="flex items-center gap-2"><span className={`inline-block px-2 py-1 rounded-full text-xs font-medium text-white ${getCategoryColor(suggestion.category)}`}>{suggestion.category}</span></div>
                       <div className="flex gap-1">
@@ -703,36 +739,6 @@ const TextEditor: React.FC = () => {
                 <button onClick={() => { if (!editorRef.current) return; let content = editorRef.current.innerHTML; content = content.replace(/<mark[^>]*>(.*?)<\/mark>/g, '$1'); suggestions.forEach(suggestion => { content = content.replace(suggestion.issue, suggestion.suggestion); }); editorRef.current.innerHTML = content; updateContent(); setSuggestions([]); }} className="w-full py-2 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 text-white font-medium hover:from-green-600 hover:to-emerald-700 transition-all">{t('applyAllSuggestions')}</button>
               </div>
             )}
-            <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                {freeUses > 0 ? (
-                    <p className="text-sm text-center text-slate-600 dark:text-slate-400">
-                        You have <span className="font-bold text-indigo-500">{freeUses}</span> {t('freeUsesLeft')}.
-                    </p>
-                ) : (
-                    <div className="space-y-3">
-                        <p className="text-sm text-center font-semibold text-amber-600 dark:text-amber-400">
-                           {t('outOfFreeUses')}
-                        </p>
-                        <p className="text-xs text-center text-slate-500 dark:text-slate-400">
-                           {t('enterApiKey')}
-                        </p>
-                        <div className="flex items-center gap-2">
-                             <KeyRound className="w-4 h-4 flex-shrink-0 text-slate-500 dark:text-slate-400" />
-                            <input
-                                type="password"
-                                placeholder={t('apiKey')}
-                                value={tempApiKey}
-                                onChange={(e) => setTempApiKey(e.target.value)}
-                                className="w-full px-3 py-1.5 rounded-md text-sm border bg-white border-slate-300 text-slate-900 dark:bg-slate-800 dark:border-slate-700 dark:text-white"
-                            />
-                            <button onClick={saveApiKey} className="px-4 py-1.5 text-sm font-semibold text-white bg-indigo-600 rounded-md hover:bg-indigo-700 transition-colors">
-                                {t('saveKey')}
-                            </button>
-                        </div>
-                        {showKeySaved && <p className="text-sm text-green-500 text-center animate-pulse">{t('keySaved')}</p>}
-                    </div>
-                )}
-            </div>
           </div>
         </div>
       </div>

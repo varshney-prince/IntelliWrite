@@ -43,7 +43,7 @@ const Features: React.FC = () => {
             const Icon = featureIcons[feature.icon];
             return (
               <div key={feature.title} className="flex flex-col items-center text-center">
-                <div className="flex items-center justify-center h-16 w-16 rounded-full bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-500">
+                <div className="flex items-center justify-center h-16 w-16 rounded-full bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-500">
                   <Icon className="w-8 h-8" />
                 </div>
                 <h3 className="mt-6 text-xl font-bold text-slate-900 dark:text-white">

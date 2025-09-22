@@ -72,7 +72,7 @@ const TextEditorModal: React.FC<TextEditorModalProps> = ({ isOpen, onClose }) =>
       >
         <button
             onClick={handleClose}
-            className="absolute -top-3 -right-3 z-20 p-2 rounded-full text-white bg-slate-900/90 hover:bg-black transition-colors focus:outline-none focus:ring-2 focus:ring-white"
+            className="absolute -top-3 -right-3 z-20 p-2 rounded-full text-white bg-slate-800/80 hover:bg-slate-900/90 transition-colors focus:outline-none focus:ring-2 focus:ring-white"
             aria-label="Close editor"
         >
             <X className="w-5 h-5" />

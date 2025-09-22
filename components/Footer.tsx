@@ -17,16 +17,16 @@ const Footer: React.FC = () => {
   ];
 
   return (
-    <footer className="bg-slate-50 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-800">
+    <footer className="bg-slate-100 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="flex flex-col md:flex-row justify-between items-center gap-8">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-7 h-7 text-indigo-600 dark:text-indigo-500" />
+            <Sparkles className="w-7 h-7 text-indigo-500" />
             <span className="text-xl font-bold text-slate-900 dark:text-white">IntelliWrite</span>
           </div>
           <nav className="flex flex-wrap justify-center gap-x-6 gap-y-2">
             {footerLinks.map((link) => (
-              <a key={link.name} href={link.href} className="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+              <a key={link.name} href={link.href} className="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors">
                 {link.name}
               </a>
             ))}
