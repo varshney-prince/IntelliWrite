@@ -373,6 +373,56 @@ const TextEditor: React.FC = () => {
   };
 
   const analyzeText = async () => {
+    // Update usage statistics
+    const updateUsageStats = () => {
+      const storedStats = localStorage.getItem('apiUsageStats');
+      const today = new Date().toDateString();
+      
+      let stats = {
+        requestsToday: 0,
+        requestsThisMonth: 0,
+        lastResetDate: today
+      };
+      
+      if (storedStats) {
+        const parsedStats = JSON.parse(storedStats);
+        const currentMonth = new Date().getMonth();
+        const statsMonth = new Date(parsedStats.lastResetDate).getMonth();
+        
+        if (parsedStats.lastResetDate === today) {
+          // Same day, increment counters
+          stats = {
+            requestsToday: parsedStats.requestsToday + 1,
+            requestsThisMonth: parsedStats.requestsThisMonth + 1,
+            lastResetDate: today
+          };
+        } else if (currentMonth === statsMonth) {
+          // New day, same month
+          stats = {
+            requestsToday: 1,
+            requestsThisMonth: parsedStats.requestsThisMonth + 1,
+            lastResetDate: today
+          };
+        } else {
+          // New month
+          stats = {
+            requestsToday: 1,
+            requestsThisMonth: 1,
+            lastResetDate: today
+          };
+        }
+      } else {
+        // First time
+        stats = {
+          requestsToday: 1,
+          requestsThisMonth: 1,
+          lastResetDate: today
+        };
+      }
+      
+      localStorage.setItem('apiUsageStats', JSON.stringify(stats));
+    };
+
     if (editorRef.current) {
         let content = editorRef.current.innerHTML;
         content = content.replace(/<mark[^>]*>(.*?)<\/mark>/g, '$1');
@@ -390,6 +440,11 @@ const TextEditor: React.FC = () => {
     setSuggestions([]);
 
     try {
+      // Only update usage stats if using the free tier (no user API key)
+      if (!localStorage.getItem('userApiKey')) {
+        updateUsageStats();
+      }
+      
       const apiKey = getApiKey();
       if (!apiKey) {
         throw new Error("API key is not available.");
@@ -475,6 +530,11 @@ const TextEditor: React.FC = () => {
     setRewrittenText(''); // Clear previous rewritten text
 
     try {
+      // Only update usage stats if using the free tier (no user API key)
+      if (!localStorage.getItem('userApiKey')) {
+        updateUsageStats();
+      }
+      
       const apiKey = getApiKey();
       if (!apiKey) {
         throw new Error("API key is not available.");
