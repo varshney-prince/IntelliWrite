@@ -181,7 +181,6 @@ const APIStatus: React.FC = () => {
                 Subject to rate limits and may be temporarily unavailable if usage is high
               </li>
             </ul>
-            </p>
             <p className="mt-4 text-slate-600 dark:text-slate-400">
               For unlimited and reliable access, you can use your own Google AI Gemini API key. You can get a free key from {' '}
               <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-indigo-500 dark:text-indigo-400 hover:underline font-medium">
