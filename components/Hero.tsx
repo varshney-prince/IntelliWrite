@@ -1,10 +1,6 @@
 import React from 'react';
 
-interface HeroProps {
-  onTryDemoClick: () => void;
-}
-
-const Hero: React.FC<HeroProps> = ({ onTryDemoClick }) => {
+const Hero: React.FC = () => {
   return (
     <section className="relative pt-24 pb-16 md:pt-32 md:pb-24 overflow-hidden">
         <div className="absolute inset-0 bg-grid-slate-200/[0.05] dark:bg-grid-slate-700/[0.1] [mask-image:linear-gradient(to_bottom,white_50%,transparent_100%)]"></div>
@@ -19,12 +15,6 @@ const Hero: React.FC<HeroProps> = ({ onTryDemoClick }) => {
           Elevate your writing with our AI-powered text editor. Get instant suggestions for grammar, style, and clarity to make every word count.
         </p>
         <div className="mt-8 flex flex-col sm:flex-row justify-center items-center gap-4">
-          <button
-            onClick={onTryDemoClick}
-            className="px-8 py-3 font-semibold hidden text-white bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg shadow-lg hover:from-indigo-600 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all transform hover:scale-105"
-          >
-            Try the Demo
-          </button>
           <a
             href="#features"
             className="px-8 py-3 font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 rounded-lg shadow-md hover:bg-slate-200 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all transform hover:scale-105"

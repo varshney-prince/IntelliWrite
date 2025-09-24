@@ -1,21 +1,15 @@
 import React, { useState } from 'react';
-import { Sparkles, Sun, Moon, Menu, X } from './icons';
+import { Sparkles, Menu, X } from './icons';
 
-interface HeaderProps {
-  isDarkMode: boolean;
-  setIsDarkMode: React.Dispatch<React.SetStateAction<boolean>>;
-  onLaunchEditor: () => void;
-}
-
-const Header: React.FC<HeaderProps> = ({ isDarkMode, setIsDarkMode, onLaunchEditor }) => {
+const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const navLinks = [
     { name: 'Features', href: '#features' },
     { name: 'Demo', href: '#demo' },
-    { name: 'Pricing', href: '#pricing' },
     { name: 'About', href: '#about' },
     { name: 'Contact', href: '#contact' },
+    { name: 'API Status', href: '#api-status' },
   ];
 
   return (
@@ -34,19 +28,6 @@ const Header: React.FC<HeaderProps> = ({ isDarkMode, setIsDarkMode, onLaunchEdit
             ))}
           </nav>
           <div className="flex items-center gap-4">
-            <button
-              onClick={() => setIsDarkMode(!isDarkMode)}
-              className="p-2 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              aria-label="Toggle dark mode"
-            >
-              {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-            </button>
-            <button
-                onClick={onLaunchEditor}
-                className="sm:inline-flex items-center hidden justify-center px-4 py-2 text-sm font-semibold text-white bg-indigo-500 rounded-md shadow-sm hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
-              >
-                Launch Editor
-              </button>
             <div className="md:hidden">
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -67,12 +48,6 @@ const Header: React.FC<HeaderProps> = ({ isDarkMode, setIsDarkMode, onLaunchEdit
                 {link.name}
               </a>
             ))}
-            <button
-                onClick={() => { onLaunchEditor(); setIsMenuOpen(false); }}
-                className="sm:hidden hidden inline-flex items-center justify-center px-6 py-3 text-lg font-semibold text-white bg-indigo-500 rounded-md shadow-sm hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors w-4/5 mt-2"
-              >
-                Launch Editor
-              </button>
           </nav>
         </div>
       )}

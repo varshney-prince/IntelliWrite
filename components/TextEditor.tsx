@@ -126,6 +126,10 @@ const findMatchingLocale = (locale: string) => {
 const locale = findMatchingLocale(browserLocale);
 const t = (key: keyof typeof TRANSLATIONS['en-US']) => TRANSLATIONS[locale as keyof typeof TRANSLATIONS]?.[key] || TRANSLATIONS['en-US'][key] || key;
 
+const getApiKey = () => {
+  return localStorage.getItem('userApiKey') || process.env.API_KEY;
+};
+
 interface Suggestion {
   category: string;
   issue: string;
@@ -386,7 +390,11 @@ const TextEditor: React.FC = () => {
     setSuggestions([]);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const apiKey = getApiKey();
+      if (!apiKey) {
+        throw new Error("API key is not available.");
+      }
+      const ai = new GoogleGenAI({ apiKey });
       const responseSchema = {
         type: Type.ARRAY,
         items: {
@@ -425,7 +433,11 @@ const TextEditor: React.FC = () => {
       }
     } catch (err) {
       console.error('Analysis error:', err);
-      setError(t('failedToAnalyze'));
+      let errorMessage = t('failedToAnalyze');
+      if (err instanceof Error && (err.message.includes('API key not valid') || err.message.includes('rate limit') || err.message.includes('API key is not available'))) {
+          errorMessage += " The free tier limit may have been reached. Please add your own key on the API Status page.";
+      }
+      setError(errorMessage);
     } finally {
       setIsAnalyzing(false);
     }
@@ -463,7 +475,11 @@ const TextEditor: React.FC = () => {
     setRewrittenText(''); // Clear previous rewritten text
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const apiKey = getApiKey();
+      if (!apiKey) {
+        throw new Error("API key is not available.");
+      }
+      const ai = new GoogleGenAI({ apiKey });
       const prompt = `Rewrite the following text to be more clear, concise, and engaging. Return only the rewritten text, without any introductory phrases. Text: "${selectedText}"`;
       
       const response = await ai.models.generateContent({
@@ -476,7 +492,11 @@ const TextEditor: React.FC = () => {
       setShowRewriteModal(true);
     } catch (err) {
       console.error('Rewrite error:', err);
-      setError(t('failedToRewrite'));
+      let errorMessage = t('failedToRewrite');
+       if (err instanceof Error && (err.message.includes('API key not valid') || err.message.includes('rate limit') || err.message.includes('API key is not available'))) {
+          errorMessage += " The free tier limit may have been reached. Please add your own key on the API Status page.";
+      }
+      setError(errorMessage);
     } finally {
       setIsRewriting(false);
     }
@@ -538,8 +558,8 @@ const TextEditor: React.FC = () => {
       disabled={disabled || isLoading}
       className={`p-2 rounded transition-colors ${
         active 
-          ? 'bg-indigo-500 dark:bg-indigo-600 text-white'
-          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-700'
+          ? 'bg-indigo-500 text-white'
+          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
       } disabled:opacity-50 disabled:cursor-not-allowed`}
     >
       {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Icon className="w-4 h-4" />}
@@ -547,35 +567,35 @@ const TextEditor: React.FC = () => {
   );
 
   const ToolbarSeparator = () => (
-    <div className="w-px h-6 bg-slate-300 dark:bg-slate-700" />
+    <div className="w-px h-6 bg-slate-300" />
   );
 
   return (
-    <div className="transition-colors duration-300 border rounded-xl shadow-2xl shadow-indigo-500/10 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+    <div className="border rounded-xl shadow-2xl shadow-indigo-500/10 bg-white border-slate-200">
         <div className="grid grid-cols-1 lg:grid-cols-2">
           {/* Editor Panel */}
-          <div className="rounded-xl p-6 relative bg-white dark:bg-slate-900">
+          <div className="rounded-xl p-6 relative bg-white">
              <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
+              <h2 className="text-xl font-semibold text-slate-900">
                 {t('yourText')}
               </h2>
               <div className="flex gap-2">
-                <button onClick={loadSampleText} className="px-3 py-1 text-sm rounded-lg transition-colors flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300" >
+                <button onClick={loadSampleText} className="px-3 py-1 text-sm rounded-lg transition-colors flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700" >
                   <FileText className="w-4 h-4" />
                   {t('sample')}
                 </button>
-                <button onClick={copyText} className="px-3 py-1 text-sm rounded-lg transition-colors flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300">
+                <button onClick={copyText} className="px-3 py-1 text-sm rounded-lg transition-colors flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700">
                   <Copy className="w-4 h-4" />
                   {t('copy')}
                 </button>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-1 p-2 mb-2 rounded-lg border bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-              <select onChange={(e) => formatText('fontName', e.target.value)} defaultValue="Arial" className="px-2 py-1 rounded text-sm bg-white text-slate-700 border-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600" title={t('fontFamily')} >
+            <div className="flex flex-wrap items-center gap-1 p-2 mb-2 rounded-lg border bg-slate-50 border-slate-200">
+              <select onChange={(e) => formatText('fontName', e.target.value)} defaultValue="Arial" className="px-2 py-1 rounded text-sm bg-white text-slate-700 border border-slate-300" title={t('fontFamily')} >
                 {fonts.map(font => <option key={font.value} value={font.value}>{font.label}</option>)}
               </select>
-              <select onChange={(e) => document.execCommand('fontSize', false, (textSizes.findIndex(s => s.value === e.target.value) + 1).toString())} defaultValue="16px" className="px-2 py-1 rounded text-sm bg-white text-slate-700 border-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600" title={t('fontSize')} >
+              <select onChange={(e) => document.execCommand('fontSize', false, (textSizes.findIndex(s => s.value === e.target.value) + 1).toString())} defaultValue="16px" className="px-2 py-1 rounded text-sm bg-white text-slate-700 border border-slate-300" title={t('fontSize')} >
                 {textSizes.map(size => <option key={size.value} value={size.value}>{size.label}</option>)}
               </select>
               <ToolbarSeparator />
@@ -586,7 +606,7 @@ const TextEditor: React.FC = () => {
               <div className="relative" data-dropdown="color">
                 <ToolbarButton icon={Palette} onClick={() => setShowColorPicker(!showColorPicker)} title={t('textColor')} />
                 {showColorPicker && (
-                  <div className="absolute top-10 left-0 p-2 rounded-lg shadow-lg z-10 bg-white border border-slate-200 dark:bg-slate-800 dark:border-slate-700">
+                  <div className="absolute top-10 left-0 p-2 rounded-lg shadow-lg z-10 bg-white border border-slate-200">
                     <div className="grid grid-cols-5 gap-1">
                       {colors.map(color => <button key={color} onClick={() => { formatText('foreColor', color); setShowColorPicker(false); }} className="w-6 h-6 rounded border border-slate-400" style={{ backgroundColor: color }} />)}
                     </div>
@@ -602,10 +622,10 @@ const TextEditor: React.FC = () => {
               <div className="relative" data-dropdown="line-spacing">
                 <ToolbarButton icon={MoveVertical} onClick={() => setShowLineSpacing(!showLineSpacing)} title={t('lineSpacing')} />
                 {showLineSpacing && (
-                  <div className="absolute top-10 left-0 p-2 rounded-lg shadow-lg z-10 bg-white border border-slate-200 dark:bg-slate-800 dark:border-slate-700">
+                  <div className="absolute top-10 left-0 p-2 rounded-lg shadow-lg z-10 bg-white border border-slate-200">
                     <div className="flex flex-col gap-1">
                       {lineSpacings.map(spacing => (
-                        <button key={spacing.value} onClick={() => { if(editorRef.current) editorRef.current.style.lineHeight = spacing.value; setShowLineSpacing(false); }} className="px-3 py-1 text-sm text-left rounded text-slate-700 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-700">
+                        <button key={spacing.value} onClick={() => { if(editorRef.current) editorRef.current.style.lineHeight = spacing.value; setShowLineSpacing(false); }} className="px-3 py-1 text-sm text-left rounded text-slate-700 hover:bg-slate-200">
                           {spacing.label}
                         </button>
                       ))}
@@ -624,12 +644,12 @@ const TextEditor: React.FC = () => {
 
             {showLinkDialog && (
               <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                <div className="p-4 rounded-lg bg-white dark:bg-slate-800">
-                  <h3 className="text-lg font-semibold mb-2 text-slate-900 dark:text-white">{t('addLinkTitle')}</h3>
-                  <input type="text" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} placeholder={t('enterUrl')} className="w-64 px-3 py-2 rounded border bg-slate-50 border-slate-300 text-slate-900 dark:bg-slate-900 dark:border-slate-700 dark:text-white" />
+                <div className="p-4 rounded-lg bg-white">
+                  <h3 className="text-lg font-semibold mb-2 text-slate-900">{t('addLinkTitle')}</h3>
+                  <input type="text" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} placeholder={t('enterUrl')} className="w-64 px-3 py-2 rounded border bg-slate-50 border-slate-300 text-slate-900" />
                   <div className="flex gap-2 mt-3">
                     <button onClick={insertLink} className="px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600">{t('add')}</button>
-                    <button onClick={() => { setShowLinkDialog(false); setLinkUrl(''); }} className="px-4 py-2 rounded bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600">{t('cancel')}</button>
+                    <button onClick={() => { setShowLinkDialog(false); setLinkUrl(''); }} className="px-4 py-2 rounded bg-slate-200 text-slate-700 hover:bg-slate-300">{t('cancel')}</button>
                   </div>
                 </div>
               </div>
@@ -637,35 +657,35 @@ const TextEditor: React.FC = () => {
             
             {showRewriteModal && (
               <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                <div className="p-6 rounded-lg bg-white dark:bg-slate-800 w-full max-w-2xl shadow-xl border border-slate-200 dark:border-slate-700">
-                    <h3 className="text-xl font-semibold mb-4 text-slate-900 dark:text-white">{t('rewrite')}</h3>
+                <div className="p-6 rounded-lg bg-white w-full max-w-2xl shadow-xl border border-slate-200">
+                    <h3 className="text-xl font-semibold mb-4 text-slate-900">{t('rewrite')}</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto pr-2">
                         <div>
-                            <h4 className="font-medium text-slate-500 dark:text-slate-400 mb-2">{t('original')}</h4>
-                            <div className="p-3 rounded-md bg-slate-100 dark:bg-slate-900 text-sm text-slate-700 dark:text-slate-300">
+                            <h4 className="font-medium text-slate-500 mb-2">{t('original')}</h4>
+                            <div className="p-3 rounded-md bg-slate-100 text-sm text-slate-700">
                                 {originalTextToRewrite}
                             </div>
                         </div>
                         <div>
-                            <h4 className="font-medium text-slate-500 dark:text-slate-400 mb-2">{t('rewritten')}</h4>
-                            <div className="p-3 rounded-md bg-emerald-50 dark:bg-emerald-900/50 text-sm text-emerald-800 dark:text-emerald-200">
+                            <h4 className="font-medium text-slate-500 mb-2">{t('rewritten')}</h4>
+                            <div className="p-3 rounded-md bg-emerald-50 text-sm text-emerald-800">
                                 {rewrittenText || <span className="italic text-slate-400">{t('rewriting')}</span>}
                             </div>
                         </div>
                     </div>
                     <div className="flex gap-2 mt-6 justify-end">
                         <button onClick={handleAcceptRewrite} disabled={!rewrittenText} className="px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600 disabled:bg-indigo-300 disabled:cursor-not-allowed">{t('accept')}</button>
-                        <button onClick={() => setShowRewriteModal(false)} className="px-4 py-2 rounded bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600">{t('cancel')}</button>
+                        <button onClick={() => setShowRewriteModal(false)} className="px-4 py-2 rounded bg-slate-200 text-slate-700 hover:bg-slate-300">{t('cancel')}</button>
                     </div>
                 </div>
               </div>
             )}
 
-            <div ref={editorRef} contentEditable={true} suppressContentEditableWarning={true} onInput={updateContent} onPaste={handlePaste} className="w-full h-96 p-4 rounded-lg border transition-colors overflow-y-auto focus:outline-none focus:ring-2 bg-slate-50 border-slate-200 text-slate-900 focus:ring-indigo-400 dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:focus:ring-indigo-500" style={{ minHeight: '24rem', fontFamily: 'Arial, sans-serif', fontSize: '16px', lineHeight: '1.5' }} />
+            <div ref={editorRef} contentEditable={true} suppressContentEditableWarning={true} onInput={updateContent} onPaste={handlePaste} className="w-full h-96 p-4 rounded-lg border overflow-y-auto focus:outline-none focus:ring-2 bg-slate-50 border-slate-200 text-slate-900 focus:ring-indigo-400" style={{ minHeight: '24rem', fontFamily: 'Arial, sans-serif', fontSize: '16px', lineHeight: '1.5' }} />
             
             <div className="mt-4 flex justify-between items-center">
-              <span className="text-sm text-slate-600 dark:text-slate-400">{text.length} {t('characters')}</span>
-              <button onClick={analyzeText} disabled={isAnalyzing || !text.trim()} className={`px-6 py-2 rounded-lg font-medium transition-all transform hover:scale-105 flex items-center gap-2 ${ isAnalyzing || !text.trim() ? 'bg-slate-600 text-slate-400 cursor-not-allowed' : 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:from-indigo-600 hover:to-purple-700 shadow-lg' }`}>
+              <span className="text-sm text-slate-600">{text.length} {t('characters')}</span>
+              <button onClick={analyzeText} disabled={isAnalyzing || !text.trim()} className={`px-6 py-2 rounded-lg font-medium transition-all transform hover:scale-105 flex items-center gap-2 ${ isAnalyzing || !text.trim() ? 'bg-slate-400 text-slate-200 cursor-not-allowed' : 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:from-indigo-600 hover:to-purple-700 shadow-lg' }`}>
                 {isAnalyzing ? (<><Loader2 className="w-4 h-4 animate-spin" />{t('analyzing')}</>) : (<><Sparkles className="w-4 h-4" />{t('analyzeText')}</>)}
               </button>
             </div>
@@ -673,23 +693,23 @@ const TextEditor: React.FC = () => {
             {error && (<div className="mt-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20"><p className="text-red-500 text-sm">{error}</p></div>)}
 
             {activeTooltip && (
-              <div data-tooltip className="absolute z-20 p-3 rounded-lg shadow-xl border bg-white border-slate-200 dark:bg-slate-900 dark:border-slate-700" style={{ top: `${tooltipPosition.top}px`, left: `${tooltipPosition.left}px`, transform: tooltipPosition.isBelow ? 'translateX(-50%)' : 'translate(-50%, -100%)', maxWidth: '300px' }}>
+              <div data-tooltip className="absolute z-20 p-3 rounded-lg shadow-xl border bg-white border-slate-200" style={{ top: `${tooltipPosition.top}px`, left: `${tooltipPosition.left}px`, transform: tooltipPosition.isBelow ? 'translateX(-50%)' : 'translate(-50%, -100%)', maxWidth: '300px' }}>
                 <div className="flex items-center gap-2 mb-2"><span className={`inline-block px-2 py-1 rounded-full text-xs font-medium text-white ${getCategoryColor(activeTooltip.category)}`}>{activeTooltip.category}</span></div>
                 <div className="space-y-2 mb-3">
                   <div className="flex items-center gap-2 text-sm">
-                    <span className="line-through text-red-600 dark:text-red-400">{activeTooltip.issue}</span>
-                    <span className="text-slate-400 dark:text-slate-500">→</span>
-                    <span className="font-medium text-green-600 dark:text-green-400">{activeTooltip.suggestion}</span>
+                    <span className="line-through text-red-600">{activeTooltip.issue}</span>
+                    <span className="text-slate-400">→</span>
+                    <span className="font-medium text-green-600">{activeTooltip.suggestion}</span>
                   </div>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">{activeTooltip.explanation}</p>
+                  <p className="text-sm text-slate-600">{activeTooltip.explanation}</p>
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => applySuggestion(activeTooltip)} className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600 transition-colors">{t('accept')}</button>
                   <button onClick={() => dismissSuggestion(activeTooltip)} className="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600 transition-colors">{t('reject')}</button>
-                  <button onClick={() => setActiveTooltip(null)} className="px-3 py-1 rounded text-sm transition-colors bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600">{t('cancel')}</button>
+                  <button onClick={() => setActiveTooltip(null)} className="px-3 py-1 rounded text-sm transition-colors bg-slate-200 text-slate-700 hover:bg-slate-300">{t('cancel')}</button>
                 </div>
                 <div 
-                   className={`absolute w-3 h-3 transform rotate-45 bg-white dark:bg-slate-900 ${ tooltipPosition.isBelow ? 'border-l border-t' : 'border-r border-b' } border-slate-200 dark:border-slate-700`} 
+                   className={`absolute w-3 h-3 transform rotate-45 bg-white ${ tooltipPosition.isBelow ? 'border-l border-t' : 'border-r border-b' } border-slate-200`} 
                    style={{ ...(tooltipPosition.isBelow ? { top: '-6px', left: '50%', transform: 'translateX(-50%) rotate(45deg)' } : { bottom: '-6px', left: '50%', transform: 'translateX(-50%) rotate(45deg)' }) }} 
                 />
               </div>
@@ -697,11 +717,11 @@ const TextEditor: React.FC = () => {
           </div>
 
           {/* Suggestions Panel */}
-          <div className="rounded-xl p-6 border-t lg:border-t-0 lg:border-l flex flex-col bg-slate-50/50 border-slate-200 dark:bg-slate-900/50 dark:border-slate-800">
-            <h2 className="text-xl font-semibold mb-4 text-slate-900 dark:text-white">{t('suggestions')}</h2>
+          <div className="rounded-xl p-6 border-t lg:border-t-0 lg:border-l flex flex-col bg-slate-50/50 border-slate-200">
+            <h2 className="text-xl font-semibold mb-4 text-slate-900">{t('suggestions')}</h2>
             <div className="flex flex-wrap gap-2 mb-4">
               {categories.map(category => (
-                <button key={category.id} onClick={() => setActiveCategory(category.id)} className={`px-3 py-1 rounded-full text-sm font-medium transition-all ${ activeCategory === category.id ? `${category.color} text-white` : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700' }`}>
+                <button key={category.id} onClick={() => setActiveCategory(category.id)} className={`px-3 py-1 rounded-full text-sm font-medium transition-all ${ activeCategory === category.id ? `${category.color} text-white` : 'bg-slate-100 text-slate-700 hover:bg-slate-200' }`}>
                   {category.label}
                   {suggestions.filter(s => category.id === 'all' || s.category === category.id).length > 0 && <span className="ml-1">({suggestions.filter(s => category.id === 'all' || s.category === category.id).length})</span>}
                 </button>
@@ -709,12 +729,12 @@ const TextEditor: React.FC = () => {
             </div>
             <div className="space-y-3 flex-grow h-80 overflow-y-auto pr-2">
               {filteredSuggestions.length === 0 ? (
-                <div className="text-center py-12 text-slate-400 dark:text-slate-500">
+                <div className="text-center py-12 text-slate-400">
                   {suggestions.length === 0 ? t('clickAnalyzeText') : t('noSuggestionsCategory')}
                 </div>
               ) : (
                 filteredSuggestions.map((suggestion, index) => (
-                  <div key={index} className="p-4 rounded-lg border transition-all hover:shadow-md bg-white border-slate-200 hover:border-slate-300 dark:bg-slate-800 dark:border-slate-700 dark:hover:border-slate-600">
+                  <div key={index} className="p-4 rounded-lg border transition-all hover:shadow-md bg-white border-slate-200 hover:border-slate-300">
                     <div className="flex justify-between items-start mb-2">
                       <div className="flex items-center gap-2"><span className={`inline-block px-2 py-1 rounded-full text-xs font-medium text-white ${getCategoryColor(suggestion.category)}`}>{suggestion.category}</span></div>
                       <div className="flex gap-1">
@@ -724,18 +744,18 @@ const TextEditor: React.FC = () => {
                     </div>
                     <div className="space-y-2">
                       <div className="flex items-center gap-2 text-sm">
-                        <span className="line-through text-red-600 dark:text-red-400">{suggestion.issue}</span>
-                        <span className="text-slate-400 dark:text-slate-500">→</span>
-                        <span className="font-medium text-green-600 dark:text-green-400">{suggestion.suggestion}</span>
+                        <span className="line-through text-red-600">{suggestion.issue}</span>
+                        <span className="text-slate-400">→</span>
+                        <span className="font-medium text-green-600">{suggestion.suggestion}</span>
                       </div>
-                      <p className="text-sm text-slate-600 dark:text-slate-400">{suggestion.explanation}</p>
+                      <p className="text-sm text-slate-600">{suggestion.explanation}</p>
                     </div>
                   </div>
                 ))
               )}
             </div>
             {suggestions.length > 0 && (
-              <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+              <div className="mt-4 pt-4 border-t border-slate-200">
                 <button onClick={() => { if (!editorRef.current) return; let content = editorRef.current.innerHTML; content = content.replace(/<mark[^>]*>(.*?)<\/mark>/g, '$1'); suggestions.forEach(suggestion => { content = content.replace(suggestion.issue, suggestion.suggestion); }); editorRef.current.innerHTML = content; updateContent(); setSuggestions([]); }} className="w-full py-2 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 text-white font-medium hover:from-green-600 hover:to-emerald-700 transition-all">{t('applyAllSuggestions')}</button>
               </div>
             )}

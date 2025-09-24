@@ -3,20 +3,17 @@ import Header from './components/Header';
 import Hero from './components/Hero';
 import Features from './components/Features';
 import Demo from './components/Demo';
-import Pricing from './components/Pricing';
 import About from './components/About';
 import Contact from './components/Contact';
 import Footer from './components/Footer';
-import TextEditorModal from './components/TextEditorModal';
+import APIStatus from './components/APIStatus';
 
 const App: React.FC = () => {
   const [isDarkMode, setIsDarkMode] = useState(() => 
     window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
   );
-  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const openModal = () => setIsModalOpen(true);
-  const closeModal = () => setIsModalOpen(false);
+  const [route, setRoute] = useState(window.location.hash);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -27,32 +24,40 @@ const App: React.FC = () => {
   }, [isDarkMode]);
 
   useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    
-    const handleChange = (e: MediaQueryListEvent) => {
-      setIsDarkMode(e.matches);
+    const handleHashChange = () => {
+      setRoute(window.location.hash);
     };
 
-    mediaQuery.addEventListener('change', handleChange);
-
+    window.addEventListener('hashchange', handleHashChange);
     return () => {
-      mediaQuery.removeEventListener('change', handleChange);
+      window.removeEventListener('hashchange', handleHashChange);
     };
   }, []);
 
+  const renderContent = () => {
+    switch(route) {
+      case '#api-status':
+        return <APIStatus />;
+      default:
+        return (
+          <>
+            <Hero />
+            <Features />
+            <Demo />
+            <About />
+            <Contact />
+          </>
+        );
+    }
+  };
+
   return (
     <div className="bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 transition-colors duration-300">
-      <Header isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} onLaunchEditor={openModal} />
+      <Header />
       <main>
-        <Hero onTryDemoClick={openModal} />
-        <Features />
-        <Demo onTryDemoClick={openModal} />
-        <Pricing />
-        <About />
-        <Contact />
+        {renderContent()}
       </main>
       <Footer />
-      <TextEditorModal isOpen={isModalOpen} onClose={closeModal} />
     </div>
   );
 };

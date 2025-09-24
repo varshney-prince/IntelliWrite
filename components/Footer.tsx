@@ -5,9 +5,9 @@ const Footer: React.FC = () => {
   const footerLinks = [
     { name: 'Features', href: '#features' },
     { name: 'Demo', href: '#demo' },
-    { name: 'Pricing', href: '#pricing' },
     { name: 'About', href: '#about' },
     { name: 'Contact', href: '#contact' },
+    { name: 'API Status', href: '#api-status' },
   ];
 
   const socialLinks = [
