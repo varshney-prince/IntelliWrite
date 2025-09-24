@@ -666,9 +666,17 @@ const TextEditor: React.FC = () => {
               <div className="relative" data-dropdown="color">
                 <ToolbarButton icon={Palette} onClick={() => setShowColorPicker(!showColorPicker)} title={t('textColor')} />
                 {showColorPicker && (
-                  <div className="absolute top-10 left-0 p-2 rounded-lg shadow-lg z-10 bg-white border border-slate-200">
+                  <div className="absolute top-10 left-0 p-3 rounded-lg shadow-lg z-20 bg-white border border-slate-200 min-w-max">
                     <div className="grid grid-cols-5 gap-1">
-                      {colors.map(color => <button key={color} onClick={() => { formatText('foreColor', color); setShowColorPicker(false); }} className="w-6 h-6 rounded border border-slate-400" style={{ backgroundColor: color }} />)}
+                      {colors.map(color => (
+                        <button 
+                          key={color} 
+                          onClick={() => { formatText('foreColor', color); setShowColorPicker(false); }} 
+                          className="w-7 h-7 rounded border-2 border-slate-300 hover:border-slate-500 transition-colors shadow-sm" 
+                          style={{ backgroundColor: color }}
+                          title={`Color: ${color}`}
+                        />
+                      ))}
                     </div>
                   </div>
                 )}
