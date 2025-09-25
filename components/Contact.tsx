@@ -32,7 +32,7 @@ const Contact: React.FC = () => {
 
     setStatus('submitting');
     
-    const scriptData = new FormData();
+    const scriptData = new URLSearchParams();
     scriptData.append('name', formData.name);
     scriptData.append('email', formData.email);
     scriptData.append('message', formData.message);
@@ -40,6 +40,9 @@ const Contact: React.FC = () => {
     try {
       const response = await fetch(GOOGLE_SHEET_URL, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
         body: scriptData,
       });
 
