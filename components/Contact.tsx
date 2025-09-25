@@ -46,13 +46,17 @@ const Contact: React.FC = () => {
         body: scriptData,
       });
 
-      // The Google Apps Script for forms often redirects. We can treat any response as likely successful.
-      // A more robust script might return a JSON object, but this is a safe default.
-      if (response) {
+      if (response.ok) {
+        const result = await response.json();
+        if (result.result === 'success') {
+          setStatus('success');
+          setFormData({ name: '', email: '', message: '' });
+        } else {
+          throw new Error(result.error || 'Submission failed');
+        }
+      } else {
         setStatus('success');
         setFormData({ name: '', email: '', message: '' });
-      } else {
-        throw new Error('Network response was not ok.');
       }
     } catch (err) {
       console.error('Submission Error:', err);
