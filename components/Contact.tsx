@@ -7,7 +7,7 @@ const Contact: React.FC = () => {
   const [error, setError] = useState('');
 
   // The provided Google Apps Script "Web App URL" for form submissions.
-  const GOOGLE_SHEET_URL = 'https://script.google.com/d/1-0PQDHyZ0JUPIeP_fkytiycUaTIjkqmc_Y2oKoP3vo7zRSVAOY36ZYCZ/edit?usp=sharing';
+  const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycbyU_syBvYUsBmx4w1uS9HJ4q7wBlsB1YVfpsAzz4cY3a6yMdbR9fSen-egFAbNfDO0muA/exec';
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
